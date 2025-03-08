@@ -113,8 +113,10 @@
           this.maxHealth = 60;
           this.color = 'green';
         }
-        // 時間経過によるパワーアップ（例：1分ごとに体力20%増）
-        let diff = 1 + (gameFrame / 3600) * 0.2;
+        // ★ 敵のパワーアップ倍率の調整 ★
+        // 以下の diff によって、経過時間に応じた体力増加を実現しています。
+        // ここでは、1分ごとに体力が50%増加するようにしています（0.5 の部分を変更で調整可能）。
+        let diff = 1 + (gameFrame / 3600) * 0.5;
         this.maxHealth = Math.floor(this.maxHealth * diff);
         this.health = this.maxHealth;
 
@@ -332,17 +334,16 @@
             tower.fireRate = Math.max(Math.floor(tower.fireRate * 0.9), 5);
             document.getElementById("moneyDisplay").innerText = money;
           }
-          // 何も表示せず処理終了
           return;
         }
       }
       
-      // 新規タワー設置の場合、パス近くなら何もせず終了（アラートは出さない）
+      // 新規タワー設置の場合、パス近くなら何もせず終了
       if(isNearPath(x, y)) {
         return;
       }
       
-      // 選択中のタワーがあれば設置（十分な資金がない場合も何もせず終了）
+      // 選択中のタワーがあれば設置（十分な資金がある場合のみ）
       if (selectedTowerType && money >= towerTypes[selectedTowerType].cost) {
         towers.push(new Tower(x, y, selectedTowerType));
         money -= towerTypes[selectedTowerType].cost;
@@ -363,7 +364,6 @@
         ctx.fillText("GAME OVER", canvas.width/2 - 150, canvas.height/2);
         ctx.font = "24px sans-serif";
         ctx.fillText("Time: " + Math.floor(gameFrame/60) + " s  Score: " + score, canvas.width/2 - 150, canvas.height/2 + 40);
-        // リトライ可能であることを画面下部に表示
         ctx.font = "18px sans-serif";
         ctx.fillText("クリックでリトライ", canvas.width/2 - 80, canvas.height/2 + 80);
         return;
@@ -406,17 +406,19 @@
         if (waveCount % 3 === 0) enemyType = 'tank';
         if (waveCount % 5 === 0) enemyType = 'fast';
         enemies.push(new Enemy(enemyType));
-        enemySpawnTimer = 60;
         waveCount++;
+        // ★ 敵の出現頻度の調整 ★
+        // 下記の式は、時間経過（gameFrame）によりspawn間隔が短くなる仕組みです。
+        // ここでは初期は60フレームで、約10秒ごとに1フレームずつ短くなり、下限は20フレームとなります。
+        enemySpawnTimer = Math.max(20, 60 - Math.floor(gameFrame / 600));
       }
       
-      // 敵の更新と描画、死亡時の処理（所持金・スコア増加量を調整）
+      // 敵の更新と描画、死亡時の処理
       for (let i = enemies.length - 1; i >= 0; i--) {
         let enemy = enemies[i];
         enemy.update();
         if (enemy.health <= 0) {
           if(!enemy.reachedEnd) {
-            // 種類別に控えめな増加値
             if(enemy.type === 'tank') {
               money += 10;
               score += 10;
