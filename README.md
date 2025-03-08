@@ -116,7 +116,7 @@
         // ★ 敵のパワーアップ倍率の調整 ★
         // 以下の diff によって、経過時間に応じた体力増加を実現しています。
         // ここでは、1分ごとに体力が50%増加するようにしています（0.5 の部分を変更で調整可能）。
-        let diff = 1 + (gameFrame / 3600) * 0.5;
+        let diff = 1 + (gameFrame / 3600) * 1.0;
         this.maxHealth = Math.floor(this.maxHealth * diff);
         this.health = this.maxHealth;
 
@@ -410,7 +410,7 @@
         // ★ 敵の出現頻度の調整 ★
         // 下記の式は、時間経過（gameFrame）によりspawn間隔が短くなる仕組みです。
         // ここでは初期は60フレームで、約10秒ごとに1フレームずつ短くなり、下限は20フレームとなります。
-        enemySpawnTimer = Math.max(20, 60 - Math.floor(gameFrame / 600));
+        enemySpawnTimer = Math.max(10, 60 - Math.floor(gameFrame / 500));
       }
       
       // 敵の更新と描画、死亡時の処理
