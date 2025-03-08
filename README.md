@@ -58,18 +58,26 @@
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    let money = 300;
-    let towers = [];
-    let enemies = [];
-    let projectiles = [];
-    let selectedTowerType = null;
-    let waveCount = 0;
-    let enemySpawnTimer = 0;
-    const enemySpawnInterval = 60; // フレーム数
-    let gameFrame = 0;
-    let score = 0;
-    let lives = 10;
-    let gameOver = false;
+    // 初期状態の設定
+    let money, towers, enemies, projectiles, selectedTowerType, waveCount, enemySpawnTimer, gameFrame, score, lives, gameOver;
+    function resetGame() {
+      money = 300;
+      towers = [];
+      enemies = [];
+      projectiles = [];
+      selectedTowerType = null;
+      waveCount = 0;
+      enemySpawnTimer = 0;
+      gameFrame = 0;
+      score = 0;
+      lives = 10;
+      gameOver = false;
+      document.getElementById("moneyDisplay").innerText = money;
+      document.getElementById("timeDisplay").innerText = gameFrame;
+      document.getElementById("scoreDisplay").innerText = score;
+      document.getElementById("livesDisplay").innerText = lives;
+    }
+    resetGame();
 
     // 敵が進むパス（ウェイポイント）
     const path = [
@@ -81,7 +89,7 @@
       {x: 800, y: 500},
     ];
 
-    // 各タワーの設定に projectileColor を追加
+    // タワー設定（各タワーに projectileColor を追加）
     const towerTypes = {
       cannon: { cost: 100, range: 120, fireRate: 60, damage: 30, color: 'orange', projectileSpeed: 3, splashRadius: 20, projectileColor: 'darkorange' },
       arrow: { cost: 80, range: 100, fireRate: 30, damage: 15, color: 'yellow', projectileSpeed: 6, projectileColor: 'gold' },
@@ -105,7 +113,11 @@
           this.maxHealth = 60;
           this.color = 'green';
         }
+        // 時間経過によるパワーアップ（例：1分ごとに体力20%増）
+        let diff = 1 + (gameFrame / 3600) * 0.2;
+        this.maxHealth = Math.floor(this.maxHealth * diff);
         this.health = this.maxHealth;
+
         this.x = path[0].x;
         this.y = path[0].y;
         this.waypointIndex = 0;
@@ -149,7 +161,7 @@
         ctx.fillStyle = this.color;
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
-        // 体力バー
+        // 体力バーの描画
         ctx.fillStyle = 'black';
         ctx.fillRect(this.x - this.radius, this.y - this.radius - 10, this.radius * 2, 5);
         ctx.fillStyle = 'lime';
@@ -157,7 +169,7 @@
       }
     }
 
-    // タワークラス（自動レベルアップを削除、手動アップグレードに対応）
+    // タワークラス（手動アップグレード）
     class Tower {
       constructor(x, y, type) {
         this.x = x;
@@ -207,7 +219,7 @@
       }
     }
 
-    // 弾クラス（タワーごとの projectileColor を使用）
+    // 弾クラス（タワーごとの projectileColor 使用）
     class Projectile {
       constructor(x, y, target, damage, speed, towerType) {
         this.x = x;
@@ -227,7 +239,7 @@
         const dist = Math.sqrt(dx*dx + dy*dy);
         if (dist < this.speed || this.target.health <= 0) {
           this.target.health -= this.damage;
-          // タワーごとの特殊効果
+          // タワー固有の特殊効果
           if(this.towerType === 'cannon') {
             const splashRadius = towerTypes.cannon.splashRadius;
             for(let enemy of enemies) {
@@ -260,7 +272,7 @@
       }
     }
 
-    // 直線セグメントと点の距離を求める関数
+    // 直線セグメントと点の距離を計算する関数
     function pointToSegmentDistance(px, py, x1, y1, x2, y2) {
       const A = px - x1;
       const B = py - y1;
@@ -284,7 +296,7 @@
       return Math.sqrt(dx*dx + dy*dy);
     }
 
-    // クリック位置がパスに近いかを判定（30px以内なら近いとする）
+    // クリック位置がパスに近いか判定（30px以内なら設置不可）
     function isNearPath(x, y) {
       const threshold = 30;
       for(let i = 0; i < path.length - 1; i++) {
@@ -295,42 +307,42 @@
     }
 
     // キャンバスクリック時の処理
-    // ・既存のタワーがクリックされた場合はアップグレード処理を行う（手動アップグレード）
-    // ・それ以外の場合、クリック位置がパス上でなければタワーを新規設置する
     canvas.addEventListener('click', function(event) {
       const rect = canvas.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
+
+      // ゲームオーバー時はリトライする
+      if(gameOver) {
+        resetGame();
+        return;
+      }
       
-      // 既存タワーの判定（中心から20px以内ならアップグレード対象）
+      // 既存タワーの判定（中心から20px以内ならアップグレード）
       for(let tower of towers) {
         const dx = tower.x - x;
         const dy = tower.y - y;
         if(Math.sqrt(dx*dx + dy*dy) < 20) {
           const upgradeCost = tower.level * 50;
-          if(confirm("このタワーをアップグレードしますか？ コスト: $" + upgradeCost)) {
-            if(money >= upgradeCost) {
-              money -= upgradeCost;
-              tower.level++;
-              tower.damage = Math.floor(tower.damage * 1.2);
-              tower.range = Math.floor(tower.range * 1.1);
-              tower.fireRate = Math.max(Math.floor(tower.fireRate * 0.9), 5);
-              document.getElementById("moneyDisplay").innerText = money;
-            } else {
-              alert("資金が足りません！");
-            }
+          if(money >= upgradeCost) {
+            money -= upgradeCost;
+            tower.level++;
+            tower.damage = Math.floor(tower.damage * 1.2);
+            tower.range = Math.floor(tower.range * 1.1);
+            tower.fireRate = Math.max(Math.floor(tower.fireRate * 0.9), 5);
+            document.getElementById("moneyDisplay").innerText = money;
           }
+          // 何も表示せず処理終了
           return;
         }
       }
       
-      // 新規タワー設置の場合、パス上は設置不可
+      // 新規タワー設置の場合、パス近くなら何もせず終了（アラートは出さない）
       if(isNearPath(x, y)) {
-        alert("タワーは道上に設置できません！");
         return;
       }
       
-      // 選択中のタワー種類があれば設置
+      // 選択中のタワーがあれば設置（十分な資金がない場合も何もせず終了）
       if (selectedTowerType && money >= towerTypes[selectedTowerType].cost) {
         towers.push(new Tower(x, y, selectedTowerType));
         money -= towerTypes[selectedTowerType].cost;
@@ -351,6 +363,9 @@
         ctx.fillText("GAME OVER", canvas.width/2 - 150, canvas.height/2);
         ctx.font = "24px sans-serif";
         ctx.fillText("Time: " + Math.floor(gameFrame/60) + " s  Score: " + score, canvas.width/2 - 150, canvas.height/2 + 40);
+        // リトライ可能であることを画面下部に表示
+        ctx.font = "18px sans-serif";
+        ctx.fillText("クリックでリトライ", canvas.width/2 - 80, canvas.height/2 + 80);
         return;
       }
       
@@ -391,20 +406,27 @@
         if (waveCount % 3 === 0) enemyType = 'tank';
         if (waveCount % 5 === 0) enemyType = 'fast';
         enemies.push(new Enemy(enemyType));
-        enemySpawnTimer = enemySpawnInterval;
+        enemySpawnTimer = 60;
         waveCount++;
       }
       
-      // 敵の更新と描画、死亡時の処理
+      // 敵の更新と描画、死亡時の処理（所持金・スコア増加量を調整）
       for (let i = enemies.length - 1; i >= 0; i--) {
         let enemy = enemies[i];
         enemy.update();
         if (enemy.health <= 0) {
           if(!enemy.reachedEnd) {
-            money += 20;
-            if(enemy.type === 'tank') score += 20;
-            else if(enemy.type === 'fast') score += 15;
-            else score += 10;
+            // 種類別に控えめな増加値
+            if(enemy.type === 'tank') {
+              money += 10;
+              score += 10;
+            } else if(enemy.type === 'fast') {
+              money += 8;
+              score += 8;
+            } else {
+              money += 5;
+              score += 5;
+            }
             document.getElementById("moneyDisplay").innerText = money;
           }
           enemies.splice(i, 1);
